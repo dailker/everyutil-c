@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: everyutil
+Description: Utility C library
+Version: 1.0.0
+Libs: -L${libdir} -leveryutil
+Cflags: -I${includedir}
