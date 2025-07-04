@@ -1,8 +1,8 @@
 CC = @CC@
-CFLAGS = @CFLAGS@ -I@includedir@ -fPIC
+CFLAGS = @CFLAGS@ -fPIC -DEVERYUTIL_BUILD -Wall -O2 $(shell find include -type d -name "*" -exec echo -I{} \;)
 LDFLAGS = @LDFLAGS@
 AR = ar
-RANLIB = ranlib
+RANLIB = @RANLIB@
 SRC_DIR = src
 INCLUDE_DIR = include
 BUILD_DIR = build
@@ -19,17 +19,16 @@ ifeq ($(OS),Windows_NT)
     LIB_SHARED := $(BUILD_DIR)/lib$(LIB_NAME).dll
     LIB_IMPORT := $(BUILD_DIR)/lib$(LIB_NAME).lib
     TEST_BIN := $(BUILD_DIR)/test_utils.exe
-    CFLAGS += -DBUILDING_EVERYUTIL -DEVERYUTIL_EXPORTS
 else
     TEST_BIN := $(BUILD_DIR)/test_utils
 endif
 
-SRC_FILES = $(wildcard $(SRC_DIR)/*/*.c)
+# Collect all source files from any subdirectory under src/
+SRC_FILES = $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRC_FILES))
-TEST_SRC = $(wildcard $(TEST_DIR)/*/*.c)
+# Collect all test source files from any subdirectory under tests/
+TEST_SRC = $(shell find $(TEST_DIR) -name '*.c')
 TEST_OBJ = $(patsubst $(TEST_DIR)/%.c,$(BUILD_DIR)/%.test.o,$(TEST_SRC))
-
-# Build each test as its own executable in build/testExecutables/{category}/
 TEST_EXEC_DIR = $(BUILD_DIR)/testExecutables
 TEST_EXECUTABLES = $(patsubst $(TEST_DIR)/%.c,$(TEST_EXEC_DIR)/%.exe,$(TEST_SRC))
 
@@ -38,7 +37,7 @@ TEST_EXECUTABLES = $(patsubst $(TEST_DIR)/%.c,$(TEST_EXEC_DIR)/%.exe,$(TEST_SRC)
 all: | $(BUILD_DIR) static shared test
 
 $(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR) $(shell find $(SRC_DIR) -type d -exec echo $(BUILD_DIR)/{} \; | sed 's|$(SRC_DIR)/||g') $(shell find $(TEST_DIR) -type d -exec echo $(TEST_EXEC_DIR)/{} \; | sed 's|$(TEST_DIR)/||g')
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
@@ -51,15 +50,14 @@ $(LIB_STATIC): $(OBJ_FILES)
 $(LIB_SHARED): $(OBJ_FILES)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 ifeq ($(OS),Windows_NT)
-	$(CC) -shared -o $@ $^ -Wl,--out-implib,$(LIB_IMPORT)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -Wl,--out-implib,$(LIB_IMPORT)
 endif
 
 $(BUILD_DIR)/%.test.o: $(TEST_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Pattern rule to build each test executable
-$(TEST_EXEC_DIR)/%.exe: $(TEST_DIR)/%.c $(LIB_STATIC)
+$(TEST_EXEC_DIR)/%.exe: $(BUILD_DIR)/%.test.o $(LIB_STATIC)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $< $(LIB_STATIC) -o $@ $(LDFLAGS)
 
@@ -70,11 +68,10 @@ static: $(LIB_STATIC)
 
 shared: $(LIB_SHARED)
 
-# Run all tests
 test: $(TEST_EXECUTABLES)
 	@for exe in $(TEST_EXECUTABLES); do \
-	  echo "Running $$exe"; \
-	  ./$$exe; \
+		echo "Running $$exe"; \
+		./$$exe; \
 	done
 
 install: $(LIB_STATIC) $(LIB_SHARED)
@@ -83,12 +80,13 @@ install: $(LIB_STATIC) $(LIB_SHARED)
 ifeq ($(OS),Windows_NT)
 	cp $(LIB_IMPORT) $(PREFIX)/lib
 endif
-	cp -r $(INCLUDE_DIR)/* $(PREFIX)/include
+	@find $(INCLUDE_DIR) -type d -name "*" -exec mkdir -p $(PREFIX)/include/{} \;
+	@find $(INCLUDE_DIR) -type f -name "*.h" -exec cp {} $(PREFIX)/include/{} \;
 	sed 's|@PREFIX@|$(PREFIX)|g' pkgconfig/everyutil.pc > $(PREFIX)/lib/pkgconfig/everyutil.pc
 
 uninstall:
 	rm -f $(PREFIX)/lib/lib$(LIB_NAME).a $(PREFIX)/lib/lib$(LIB_NAME).so $(PREFIX)/lib/lib$(LIB_NAME).dll $(PREFIX)/lib/lib$(LIB_NAME).lib
-	rm -rf $(PREFIX)/include/string
+	rm -rf $(PREFIX)/include/*
 	rm -f $(PREFIX)/lib/pkgconfig/everyutil.pc
 
 clean:

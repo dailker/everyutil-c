@@ -4,6 +4,19 @@
         "optional": "cpp",
         "format": "cpp",
         "system_error": "cpp",
-        "array": "c"
+        "array": "c",
+        "rgb_to_hex.h": "c",
+        "hsl_to_rgb.h": "c",
+        "rgb_to_hsl.h": "c",
+        "parse_color_string.h": "c",
+        "rgb_to_xyz.h": "c",
+        "rgb_to_lab.h": "c",
+        "pulse_color.h": "c",
+        "fractal_chunks.h": "c",
+        "semantic_group.h": "c",
+        "windowed_reduce.h": "c",
+        "with_index.h": "c",
+        "stdlib.h": "c",
+        "zip_diagonals.h": "c"
     }
 }

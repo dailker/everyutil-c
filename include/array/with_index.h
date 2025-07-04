@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-  #ifdef EVERYUTIL_EXPORTS
+  #ifdef EVERYUTIL_BUILD
     #define EVERYUTIL_API __declspec(dllexport)
   #else
     #define EVERYUTIL_API __declspec(dllimport)
@@ -18,20 +18,19 @@ extern "C" {
 #include <stddef.h>
 
 /**
- * Struct holding an index and a pointer to a value.
+ * Struct to hold an item and its index.
  */
 typedef struct {
-    size_t index;
-    void* value;
+    void* value;   // Pointer to the item
+    size_t index;  // Index of the item in the original array
 } with_index_item_t;
 
 /**
- * Transforms an array of pointers [a, b, c] into an array of {index, value} structs.
- * 
- * @param array Array of pointers to values.
- * @param length Number of elements in the array.
- * @return Dynamically allocated array of with_index_item_t structs (caller must free),
- *         or NULL on failure.
+ * Creates an array of items paired with their indices.
+ * @param array Input array of pointers to items.
+ * @param length Number of items in the array.
+ * @return Array of with_index_item_t structs, or NULL on error.
+ * Caller must free the returned array.
  */
 EVERYUTIL_API with_index_item_t* withIndex(void** array, size_t length);
 

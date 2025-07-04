@@ -1,36 +1,32 @@
-#include <stdlib.h>
 #include "array/windowed_reduce.h"
+#include <stdlib.h>
 
-void* windowedReduce(
+EVERYUTIL_API void* windowedReduce(
     void** array,
-    size_t arrayLength,
-    windowed_reduce_callback reducer,
-    void* initialValue,
-    size_t windowSize
+    size_t length,
+    windowed_reducer_fn reducer,
+    void* initial_value,
+    size_t window_size
 ) {
-    if (!array || !reducer || !initialValue) return NULL;
-    if (windowSize == 0 || windowSize > arrayLength) return NULL;
+    if (!array || !reducer || window_size == 0 || length < window_size) return NULL;
 
-    void* acc = initialValue;
+    void* result = initial_value;
+    for (size_t i = 0; i <= length - window_size; i++) {
+        // Create window array
+        void** window = (void**)malloc(window_size * sizeof(void*));
+        if (!window) return NULL;
 
-    // Temporary buffer to hold window elements pointers
-    void** window = (void**)malloc(windowSize * sizeof(void*));
-    if (!window) return NULL;
-
-    for (size_t i = 0; i <= arrayLength - windowSize; i++) {
-        // Copy pointers for current window
-        for (size_t j = 0; j < windowSize; j++) {
+        // Populate window
+        for (size_t j = 0; j < window_size; j++) {
             window[j] = array[i + j];
         }
 
-        acc = reducer(acc, window, windowSize, i, array, arrayLength);
-        if (!acc) {
-            // reducer returned NULL - treat as failure
-            free(window);
-            return NULL;
-        }
+        // Apply reducer
+        result = reducer(result, window, window_size, i, array, length);
+        free(window);
+
+        if (!result) return NULL; // Reducer failed
     }
 
-    free(window);
-    return acc;
+    return result;
 }

@@ -1044,3 +1044,11 @@ dkms.conf
 *.uf2
 # Raspberry Pi Pico disassembler file
 *.dis
+
+
+#> @dailker contributions start from here.
+#crab files I NEED TO BLOCK BYMYSELF
+autom4te.cache
+config.log
+config.status
+avoidWaitTime

@@ -1,56 +1,55 @@
 #include "array/zip_diagonals.h"
 #include <stdlib.h>
 
-diagonals_result_t zipDiagonals(void*** matrix, size_t rows, size_t cols) {
-    diagonals_result_t result = {0, NULL};
-
+EVERYUTIL_API diagonals_result_t zipDiagonals(void*** matrix, size_t rows, size_t cols) {
+    diagonals_result_t result = {NULL, 0};
     if (!matrix || rows == 0 || cols == 0) return result;
 
-    size_t total_diags = rows + cols - 1;
-    diagonal_t* diags = (diagonal_t*)malloc(total_diags * sizeof(diagonal_t));
-    if (!diags) return result;
+    // Total number of diagonals is rows + cols - 1
+    size_t diag_count = rows + cols - 1;
+    result.diagonals = (void***)malloc(diag_count * sizeof(void**));
+    if (!result.diagonals) return result;
+    result.length = diag_count;
 
-    for (size_t d = 0; d < total_diags; d++) {
-        // max possible length of each diagonal is min(rows, cols)
-        size_t capacity = (rows < cols) ? rows : cols;
-        void** diag_items = (void**)malloc(capacity * sizeof(void*));
-        if (!diag_items) {
-            // free previously allocated diagonals
+    // Allocate and populate each diagonal
+    for (size_t d = 0; d < diag_count; d++) {
+        // Calculate diagonal size
+        size_t start_row = (d < cols) ? 0 : d - cols + 1;
+        size_t start_col = (d < cols) ? d : cols - 1;
+        size_t diag_size = 0;
+        for (size_t i = start_row, j = start_col; i < rows && j < cols && j <= start_col; i++, j--) {
+            if (j >= 0 && j < cols) diag_size++; // Ensure j doesn't underflow
+        }
+
+        // Allocate diagonal array
+        result.diagonals[d] = (void**)malloc(diag_size * sizeof(void*));
+        if (!result.diagonals[d]) {
+            // Free previously allocated diagonals
             for (size_t k = 0; k < d; k++) {
-                free(diags[k].items);
+                free(result.diagonals[k]);
             }
-            free(diags);
-            return (diagonals_result_t){0, NULL};
+            free(result.diagonals);
+            result.diagonals = NULL;
+            result.length = 0;
+            return result;
         }
 
-        size_t diag_len = 0;
-        for (size_t i = 0; i < rows; i++) {
-            if (d < i) continue; // j would be negative, skip
-            size_t j = d - i;
-            if (j < cols) {
-                diag_items[diag_len++] = matrix[i][j];
+        // Populate diagonal
+        size_t index = 0;
+        for (size_t i = start_row, j = start_col; i < rows && j < cols && j <= start_col; i++, j--) {
+            if (j >= 0 && j < cols) {
+                result.diagonals[d][index++] = matrix[i][j];
             }
         }
-
-        // shrink diag_items if needed
-        if (diag_len < capacity) {
-            void** shrunk = (void**)realloc(diag_items, diag_len * sizeof(void*));
-            if (shrunk) diag_items = shrunk;
-        }
-
-        diags[d].length = diag_len;
-        diags[d].items = diag_items;
     }
 
-    result.count = total_diags;
-    result.diags = diags;
     return result;
 }
 
-void freeDiagonalsResult(diagonals_result_t result) {
-    if (!result.diags) return;
-    for (size_t i = 0; i < result.count; i++) {
-        free(result.diags[i].items);
+EVERYUTIL_API void freeDiagonalsResult(diagonals_result_t result) {
+    if (!result.diagonals) return;
+    for (size_t i = 0; i < result.length; i++) {
+        free(result.diagonals[i]);
     }
-    free(result.diags);
+    free(result.diagonals);
 }

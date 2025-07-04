@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-  #ifdef EVERYUTIL_EXPORTS
+  #ifdef EVERYUTIL_BUILD
     #define EVERYUTIL_API __declspec(dllexport)
   #else
     #define EVERYUTIL_API __declspec(dllimport)
@@ -18,37 +18,27 @@ extern "C" {
 #include <stddef.h>
 
 /**
- * Represents a single diagonal slice (an array of void* items).
+ * Struct to hold the result of zipping matrix diagonals.
  */
 typedef struct {
-    size_t length;
-    void** items;  // dynamically allocated array of pointers for this diagonal
-} diagonal_t;
-
-/**
- * Holds the result: an array of diagonals.
- */
-typedef struct {
-    size_t count;      // number of diagonals
-    diagonal_t* diags; // dynamically allocated array of diagonal_t
+    void*** diagonals; // Array of diagonal arrays
+    size_t length;     // Number of diagonals
 } diagonals_result_t;
 
 /**
- * Computes diagonal zipping of a 2D matrix.
- * 
- * @param matrix Pointer to an array of pointers, each pointing to a row array.
+ * Extracts diagonals from a matrix in a zigzag pattern (top-left to bottom-right).
+ * @param matrix Input matrix as an array of arrays of pointers.
  * @param rows Number of rows in the matrix.
  * @param cols Number of columns in the matrix.
- * @return A diagonals_result_t struct with diagonals allocated dynamically.
- *         Caller must free via freeDiagonalsResult().
- *         Returns count = 0 and diags = NULL on failure or empty input.
+ * @return A diagonals_result_t containing the extracted diagonals.
+ *         Returns {NULL, 0} on error (e.g., invalid input or memory allocation failure).
+ * Caller must free the result using freeDiagonalsResult().
  */
 EVERYUTIL_API diagonals_result_t zipDiagonals(void*** matrix, size_t rows, size_t cols);
 
 /**
- * Frees a diagonals_result_t previously returned by zipDiagonals.
- * 
- * @param result The diagonals_result_t to free.
+ * Frees the memory allocated for the diagonals result.
+ * @param result The diagonals result to free.
  */
 EVERYUTIL_API void freeDiagonalsResult(diagonals_result_t result);
 

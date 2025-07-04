@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-  #ifdef EVERYUTIL_EXPORTS
+  #ifdef EVERYUTIL_BUILD
     #define EVERYUTIL_API __declspec(dllexport)
   #else
     #define EVERYUTIL_API __declspec(dllimport)
@@ -18,44 +18,29 @@ extern "C" {
 #include <stddef.h>
 
 /**
- * Type of reducer callback used by windowedReduce.
- * 
- * @param acc Pointer to the accumulator value.
- * @param window Pointer to array of pointers representing the current window.
- * @param windowSize Number of elements in the window.
- * @param index Current start index of the window in the array.
- * @param array Pointer to the entire input array.
- * @param arrayLength Length of the input array.
- * @return Pointer to updated accumulator (may be the same as input acc).
+ * Function pointer type for the reducer function applied to each window.
+ * @param acc Accumulator value.
+ * @param window Array of pointers to elements in the current window.
+ * @param window_size Number of elements in the window.
+ * @param index Starting index of the window in the original array.
+ * @param array The original input array.
+ * @param array_length Length of the original array.
+ * @return Updated accumulator value (caller retains ownership).
  */
-typedef void* (*windowed_reduce_callback)(
-    void* acc,
-    void** window,
-    size_t windowSize,
-    size_t index,
-    void** array,
-    size_t arrayLength
-);
+typedef void* (*windowed_reducer_fn)(void* acc, void** window, size_t window_size, size_t index, void** array, size_t array_length);
 
 /**
- * Applies a reducer function on sliding windows of the array.
- * 
- * @param array Pointer to an array of pointers (generic elements).
- * @param arrayLength Length of the input array.
- * @param reducer Reducer callback function.
- * @param initialValue Pointer to initial accumulator value.
- * @param windowSize Size of the sliding window.
- * @return Pointer to the final accumulator value, or NULL on failure.
- * 
- * @note The reducer function is responsible for managing the accumulator data.
+ * Applies a reducer function over sliding windows of the input array.
+ * @param array Input array of pointers to elements.
+ * @param length Number of elements in the array.
+ * @param reducer Function to apply to each window.
+ * @param initial_value Initial accumulator value.
+ * @param window_size Size of the sliding window.
+ * @return Final accumulator value after processing all windows.
+ *         Returns NULL on error (e.g., invalid input or memory allocation failure).
+ * Caller is responsible for freeing the returned value if dynamically allocated.
  */
-EVERYUTIL_API void* windowedReduce(
-    void** array,
-    size_t arrayLength,
-    windowed_reduce_callback reducer,
-    void* initialValue,
-    size_t windowSize
-);
+EVERYUTIL_API void* windowedReduce(void** array, size_t length, windowed_reducer_fn reducer, void* initial_value, size_t window_size);
 
 #ifdef __cplusplus
 }

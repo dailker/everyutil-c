@@ -8,7 +8,7 @@ extern "C" {
 #include <stddef.h>
 
 #if defined(_WIN32) || defined(_WIN64)
-  #ifdef BUILDING_EVERYUTIL
+  #ifdef EVERYUTIL_BUILD
     #define EVERYUTIL_API __declspec(dllexport)
   #else
     #define EVERYUTIL_API __declspec(dllimport)

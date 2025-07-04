@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-  #ifdef EVERYUTIL_EXPORTS
+  #ifdef EVERYUTIL_BUILD
     #define EVERYUTIL_API __declspec(dllexport)
   #else
     #define EVERYUTIL_API __declspec(dllimport)

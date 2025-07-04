@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-  #ifdef EVERYUTIL_EXPORTS
+  #ifdef EVERYUTIL_BUILD
     #define EVERYUTIL_API __declspec(dllexport)
   #else
     #define EVERYUTIL_API __declspec(dllimport)
@@ -17,40 +17,46 @@ extern "C" {
 
 #include <stddef.h>
 
-/** Function pointer to get type string from an item */
-typedef const char* (*semantic_type_fn)(void* item);
-
-/** Represents a group of items sharing the same semantic type */
+/**
+ * Struct representing a group of items with the same semantic type.
+ */
 typedef struct {
-    char* type;       /* dynamically allocated type string */
-    void** items;     /* array of pointers to items */
-    size_t count;     /* number of items */
-    size_t capacity;  /* capacity of items array */
+    char* type;           // Semantic type name (dynamically allocated)
+    void** items;         // Array of items in the group
+    size_t count;         // Number of items in the group
+    size_t capacity;      // Allocated capacity of items array
 } semantic_group_t;
 
-/** Container holding multiple semantic groups */
+/**
+ * Struct representing the result of semantic grouping.
+ */
 typedef struct {
-    semantic_group_t* groups;
-    size_t count;
-    size_t capacity;
+    semantic_group_t* groups; // Array of groups
+    size_t count;            // Number of groups
+    size_t capacity;         // Allocated capacity of groups array
 } semantic_group_result_t;
 
 /**
- * Groups items by semantic type.
- * 
- * @param array Array of pointers to items.
- * @param length Number of items.
- * @param typeFn Callback returning type string for each item.
- * @param out_groups Pointer to store allocated result (must be freed).
- * @return 0 on success, non-zero on failure.
+ * Function pointer type for determining the semantic type of an item.
+ * @param item The item to classify.
+ * @return A string representing the semantic type (caller retains ownership).
  */
-EVERYUTIL_API int semantic_group(void** array, size_t length,
-                                 semantic_type_fn typeFn,
-                                 semantic_group_result_t* out_groups);
+typedef const char* (*semantic_type_fn)(void* item);
 
 /**
- * Frees memory allocated by semantic_group.
- * @param groups Pointer returned by semantic_group.
+ * Groups items in the array by their semantic type.
+ * @param array Input array of items.
+ * @param length Number of items in the array.
+ * @param typeFn Function to determine the semantic type of each item.
+ * @param out_groups Output struct containing the groups.
+ * @return 0 on success, -1 on failure (e.g., memory allocation error).
+ * Caller must free the result using semantic_group_free().
+ */
+EVERYUTIL_API int semantic_group(void** array, size_t length, semantic_type_fn typeFn, semantic_group_result_t* out_groups);
+
+/**
+ * Frees the memory allocated for the semantic group result.
+ * @param groups The result struct to free.
  */
 EVERYUTIL_API void semantic_group_free(semantic_group_result_t* groups);
 

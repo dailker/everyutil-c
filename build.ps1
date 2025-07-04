@@ -1,45 +1,48 @@
-# PowerShell script for building on Windows
+# PowerShell script for building the project on Windows with MSYS2/MinGW
+$ErrorActionPreference = "Stop"
 
-    # Check for compilers
-    $hasMsvc = Get-Command cl -ErrorAction SilentlyContinue
-    $hasGcc = Get-Command gcc -ErrorAction SilentlyContinue
-    if (-not $hasMsvc -and -not $hasGcc) {
-        Write-Error "No compiler found. Install MSVC or MinGW."
-        exit 1
+# Clean up m4 and build directories if they exist
+Write-Host "Cleaning up m4 and build directories..."
+if (Test-Path -Path "m4") { Remove-Item -Path "m4" -Recurse -Force }
+if (Test-Path -Path "build") { Remove-Item -Path "build" -Recurse -Force }
+
+# Function to check if a command exists
+function Test-Command {
+    param (
+        [string]$Command
+    )
+    return Get-Command $Command -ErrorAction SilentlyContinue
+}
+
+# Check and install dependencies
+$tools = @("gcc", "make", "autoreconf")
+foreach ($tool in $tools) {
+    if (-not (Test-Command $tool)) {
+        Write-Host "Installing dependencies with pacman..."
+        & pacman -S --noconfirm autoconf gcc make
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "$tool not found and installation failed. Ensure MSYS2 is installed and pacman is accessible."
+            exit 1
+        }
+        break
     }
+}
 
-    # Create build directory
-    if (-not (Test-Path -Path "build")) {
-        New-Item -ItemType Directory -Path "build"
-    }
+# Run autoreconf to generate configure script
+Write-Host "Running autoreconf..."
+autoreconf --install
 
-    # Run make
-    if ($hasGcc) {
-        Write-Host "Using MinGW to build..."
-        mingw32-make clean
-        mingw32-make all
-    } else {
-        Write-Host "Using MSVC to build..."
-        $env:CC = "cl"
-        nmake clean
-        nmake all
-    }
+# Run configure
+Write-Host "Running configure..."
+.\configure
 
-    # Run tests
-    Write-Host "Running tests..."
-    # Run all test executables in build/testExecutables/*/*.exe
-    Get-ChildItem -Path "build/testExecutables" -Recurse -Filter *.exe | ForEach-Object {
-        Write-Host "Running $($_.FullName)"
-        & $_.FullName
-    }
+# Build the project
+Write-Host "Building project..."
+make clean
+make
 
-    # Install (optional)
-    Write-Host "Installing to C:\Program Files\everyutil (customize with PREFIX=...)"
-    $env:PREFIX = "C:\Program Files\everyutil"
-    if ($hasGcc) {
-        mingw32-make install
-    } else {
-        nmake install
-    }
+# Run tests
+Write-Host "Running tests..."
+make test
 
-    Write-Host "Build and installation complete."
+Write-Host "Build and test completed successfully."
