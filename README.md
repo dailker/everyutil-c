@@ -12,19 +12,48 @@ A comprehensive C utility library with logic functions and cross-platform suppor
 
 ## Building
 
-### Using CMake
+### Quick Start (Recommended)
+```bash
+# Use the automated build script
+bash build.sh
+```
+
+### Manual Build Options
+
+#### Using Makefile (Direct)
+```bash
+make all     # Build everything (static, shared, tests)
+make static  # Build static library only
+make shared  # Build shared library only
+make test    # Build and run tests
+make clean   # Clean build artifacts
+```
+
+#### Using Autotools
+```bash
+autoreconf --install
+./configure
+make
+make test
+```
+
+#### Using CMake (if available)
 ```bash
 mkdir build && cd build
 cmake ..
 make
 ```
 
-### Using Makefile
-```bash
-make shared  # Build shared library
-make static  # Build static library
-make tests   # Build test programs
-```
+### Troubleshooting
+
+**CMake not found?**
+- Use `bash build.sh` or `make all` instead
+- The build script will auto-install dependencies on MSYS2/Linux
+
+**Missing dependencies?**
+- MSYS2: `pacman -S autoconf gcc make`
+- Ubuntu/Debian: `sudo apt-get install autoconf gcc make`
+- Fedora: `sudo dnf install autoconf gcc make`
 
 ## How to Code
 
