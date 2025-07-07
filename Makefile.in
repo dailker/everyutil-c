@@ -1,93 +1,97 @@
-CC = @CC@
-CFLAGS = @CFLAGS@ -fPIC -DEVERYUTIL_BUILD -Wall -O2 $(shell find include -type d -name "*" -exec echo -I{} \;)
-LDFLAGS = @LDFLAGS@
-AR = ar
-RANLIB = @RANLIB@
-SRC_DIR = src
-INCLUDE_DIR = include
-BUILD_DIR = build
-TEST_DIR = tests
+srcdir=@srcdir@
+VPATH=$(srcdir):bin
+
+prefix=@prefix@
+
+EXEEXT=@EXEEXT@
+
+CC=@CC@
+DEFS=@DEFS@
+DEFAULT_INCLUDES=-I@srcdir@/include
+INCLUDES=$(notdir null/)
+CPPFLAGS=@CPPFLAGS@
+CFLAGS=@CFLAGS@ -fPIC -DEVERYUTIL_BUILD -Wall -O2 $(shell find $(srcdir)/include -type d -exec echo -I{} \;)
+LDFLAGS=@LDFLAGS@
+AR=@AR@
+ARFLAGS=r
+OBJEXT=@OBJEXT@
+SOURCES=@SOURCES@
+OBJECTS=$(patsubst $(srcdir)/src/%.c, obj/%.$(OBJEXT), $(SOURCES))
+TEST_OBJECTS=$(patsubst $(srcdir)/tests/%.c, obj/tests/%.test.$(OBJEXT), $(TEST_SOURCES))
+INCLUDE_DIRECTORIES=@INCLUDE_DIRECTORIES@
+INCLUDE_FILES=@INCLUDE_FILES@
+
+# New variables for enhanced functionality
 LIB_NAME = everyutil
-LIB_STATIC = $(BUILD_DIR)/lib$(LIB_NAME).a
-LIB_SHARED = $(BUILD_DIR)/lib$(LIB_NAME).so
-PREFIX = @prefix@
-exec_prefix = @exec_prefix@
-libdir = @libdir@
-includedir = @includedir@
+TEST_SOURCES = $(shell find $(srcdir)/tests -name '*.c')
+TEST_EXECUTABLES = $(patsubst $(srcdir)/tests/%.c, testbin/%$(EXEEXT), $(TEST_SOURCES))
+TEST_EXEC_DIR = testbin
 
+# Platform-specific library names
 ifeq ($(OS),Windows_NT)
-    LIB_SHARED := $(BUILD_DIR)/lib$(LIB_NAME).dll
-    LIB_IMPORT := $(BUILD_DIR)/lib$(LIB_NAME).lib
-    TEST_BIN := $(BUILD_DIR)/test_utils.exe
+    LIB_SHARED = lib/lib$(LIB_NAME).dll
+    LIB_IMPORT = lib/lib$(LIB_NAME).lib
 else
-    TEST_BIN := $(BUILD_DIR)/test_utils
+    LIB_SHARED = lib/lib$(LIB_NAME).so
 endif
 
-# Collect all source files from any subdirectory under src/
-SRC_FILES = $(shell find $(SRC_DIR) -name '*.c')
-OBJ_FILES = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRC_FILES))
-# Collect all test source files from any subdirectory under tests/
-TEST_SRC = $(shell find $(TEST_DIR) -name '*.c')
-TEST_OBJ = $(patsubst $(TEST_DIR)/%.c,$(BUILD_DIR)/%.test.o,$(TEST_SRC))
-TEST_EXEC_DIR = $(BUILD_DIR)/testExecutables
-TEST_EXECUTABLES = $(patsubst $(TEST_DIR)/%.c,$(TEST_EXEC_DIR)/%.exe,$(TEST_SRC))
+.PHONY: all clean test static shared install
 
-.PHONY: all clean test static shared install uninstall
+all: compile_objects compile_library compile_include shared test
 
-all: | $(BUILD_DIR) static shared test
+compile_objects: obj $(OBJECTS)
 
-$(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR) $(shell find $(SRC_DIR) -type d -exec echo $(BUILD_DIR)/{} \; | sed 's|$(SRC_DIR)/||g') $(shell find $(TEST_DIR) -type d -exec echo $(TEST_EXEC_DIR)/{} \; | sed 's|$(TEST_DIR)/||g')
+obj/%.$(OBJEXT): $(srcdir)/src/%.c
+	@mkdir -p $(@D)
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+obj:
+	mkdir -p obj
 
-$(LIB_STATIC): $(OBJ_FILES)
-	$(AR) rcs $@ $^
-	$(RANLIB) $@
+compile_library: lib lib/lib$(LIB_NAME).a
 
-$(LIB_SHARED): $(OBJ_FILES)
-	$(CC) -shared -o $@ $^ $(LDFLAGS)
-ifeq ($(OS),Windows_NT)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -Wl,--out-implib,$(LIB_IMPORT)
-endif
+lib/lib$(LIB_NAME).a: $(OBJECTS)
+	$(AR) $(ARFLAGS) $@ $?
 
-$(BUILD_DIR)/%.test.o: $(TEST_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+lib:
+	mkdir -p lib
 
-$(TEST_EXEC_DIR)/%.exe: $(BUILD_DIR)/%.test.o $(LIB_STATIC)
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $< $(LIB_STATIC) -o $@ $(LDFLAGS)
+compile_include: $(addprefix $(CURDIR)/, $(INCLUDE_DIRECTORIES)) $(addprefix $(CURDIR)/, $(INCLUDE_FILES))
 
-$(TEST_BIN): $(TEST_OBJ) $(LIB_STATIC)
-	$(CC) $(CFLAGS) $(TEST_OBJ) $(LIB_STATIC) -o $@ $(LDFLAGS)
+$(addprefix $(CURDIR)/, $(INCLUDE_DIRECTORIES)):
+	mkdir -p $@
 
-static: $(LIB_STATIC)
+$(addprefix $(CURDIR)/, $(INCLUDE_FILES)): $(CURDIR)/%: %
+	cp -R $< $(@:$(CURDIR)/%=%)
 
+# Shared library target
 shared: $(LIB_SHARED)
 
+$(LIB_SHARED): $(OBJECTS)
+ifeq ($(OS),Windows_NT)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -Wl,--out-implib,$(LIB_IMPORT)
+else
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
+endif
+
+# Test compilation targets
+obj/tests/%.test.$(OBJEXT): $(srcdir)/tests/%.c
+	@mkdir -p $(@D)
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(TEST_EXEC_DIR)/%$(EXEEXT): obj/tests/%.test.$(OBJEXT) lib/lib$(LIB_NAME).a
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) $< lib/lib$(LIB_NAME).a -o $@ $(LDFLAGS)
+
 test: $(TEST_EXECUTABLES)
-	@for exe in $(TEST_EXECUTABLES); do \
-		echo "Running $$exe"; \
-		./$$exe; \
+	@for test in $(TEST_EXECUTABLES); do \
+		echo "Running $$test"; \
+		./$$test || exit 1; \
 	done
 
-install: $(LIB_STATIC) $(LIB_SHARED)
-	@mkdir -p $(PREFIX)/lib $(PREFIX)/include $(PREFIX)/lib/pkgconfig
-	cp $(LIB_STATIC) $(LIB_SHARED) $(PREFIX)/lib
-ifeq ($(OS),Windows_NT)
-	cp $(LIB_IMPORT) $(PREFIX)/lib
-endif
-	@find $(INCLUDE_DIR) -type d -name "*" -exec mkdir -p $(PREFIX)/include/{} \;
-	@find $(INCLUDE_DIR) -type f -name "*.h" -exec cp {} $(PREFIX)/include/{} \;
-	sed 's|@PREFIX@|$(PREFIX)|g' pkgconfig/everyutil.pc > $(PREFIX)/lib/pkgconfig/everyutil.pc
-
-uninstall:
-	rm -f $(PREFIX)/lib/lib$(LIB_NAME).a $(PREFIX)/lib/lib$(LIB_NAME).so $(PREFIX)/lib/lib$(LIB_NAME).dll $(PREFIX)/lib/lib$(LIB_NAME).lib
-	rm -rf $(PREFIX)/include/*
-	rm -f $(PREFIX)/lib/pkgconfig/everyutil.pc
+install:
+	cp -R lib/* $(prefix)/lib
+	cp -R include/* $(prefix)/include
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf obj lib $(TEST_EXEC_DIR)
